@@ -6,13 +6,33 @@ const TELA_BASE_ALTURA = 600;
 let escala = 1;
 let TELA_LARGURA = TELA_BASE_LARGURA;
 let TELA_ALTURA = TELA_BASE_ALTURA;
-
 const canvas = document.getElementById('tela');
 const ctx = canvas.getContext('2d');
-const elStatusTiro = document.getElementById('ui');
-const elPontos = document.getElementById('pontos');
-const elVidas = document.getElementById('vidas');
-const elFase = document.getElementById('fase');
+
+// =====================================================
+// CRIAR PAINEIS DINAMICAMENTE (cria as divs automaticamente)
+// =====================================================
+function criarPaineis() {
+  // Painel de UPGRADE — Canto superior ESQUERDO
+  const painelUpgrade = document.createElement('div');
+  painelUpgrade.id = 'painel-upgrade';
+  painelUpgrade.innerHTML = `
+    <div class="titulo">🔫 Tiro</div>
+    <div id="status-tiro"></div>
+  `;
+  document.body.appendChild(painelUpgrade);
+
+  // Painel de STATUS — Canto superior DIREITO
+  const painelStatus = document.createElement('div');
+  painelStatus.id = 'painel-status';
+  painelStatus.innerHTML = `
+    <div class="titulo">📊 Status</div>
+    <div>Pontos: <span id="pontos">0</span></div>
+    <div>Vidas: <span id="vidas">3</span></div>
+    <div>Fase: <span id="fase">1</span></div>
+  `;
+  document.body.appendChild(painelStatus);
+}
 
 // =====================================================
 // MÚSICA DE FUNDO
@@ -27,7 +47,7 @@ try {
 }
 
 // =====================================================
-// ÁUDIO
+// ÁUDIO — SONS DIFERENTES POR TIRO
 // =====================================================
 let contextoAudio = null;
 function iniciarAudio() {
@@ -40,23 +60,61 @@ function iniciarAudio() {
   }
 }
 
-// Som de Tiro
-function somTiro() {
+function somTiro(tipo = 'AMARELO') {
   if (!contextoAudio) return;
   const som = contextoAudio.createOscillator();
   const volume = contextoAudio.createGain();
   som.connect(volume);
   volume.connect(contextoAudio.destination);
-  som.type = 'sine';
-  som.frequency.setValueAtTime(880, contextoAudio.currentTime);
-  som.frequency.exponentialRampToValueAtTime(440, contextoAudio.currentTime + 0.08);
-  volume.gain.setValueAtTime(0.15, contextoAudio.currentTime);
-  volume.gain.exponentialRampToValueAtTime(0.001, contextoAudio.currentTime + 0.12);
-  som.start(contextoAudio.currentTime);
-  som.stop(contextoAudio.currentTime + 0.15);
+  switch(tipo) {
+    case 'AMARELO':
+      som.type = 'sine';
+      som.frequency.setValueAtTime(880, contextoAudio.currentTime);
+      som.frequency.exponentialRampToValueAtTime(440, contextoAudio.currentTime + 0.08);
+      volume.gain.setValueAtTime(0.15, contextoAudio.currentTime);
+      volume.gain.exponentialRampToValueAtTime(0.001, contextoAudio.currentTime + 0.12);
+      som.start(contextoAudio.currentTime);
+      som.stop(contextoAudio.currentTime + 0.15);
+      break;
+    case 'VERDE':
+      som.type = 'triangle';
+      som.frequency.setValueAtTime(660, contextoAudio.currentTime);
+      som.frequency.exponentialRampToValueAtTime(880, contextoAudio.currentTime + 0.10);
+      volume.gain.setValueAtTime(0.18, contextoAudio.currentTime);
+      volume.gain.exponentialRampToValueAtTime(0.001, contextoAudio.currentTime + 0.15);
+      som.start(contextoAudio.currentTime);
+      som.stop(contextoAudio.currentTime + 0.18);
+      break;
+    case 'AZUL':
+      som.type = 'sine';
+      som.frequency.setValueAtTime(523, contextoAudio.currentTime);
+      som.frequency.exponentialRampToValueAtTime(1047, contextoAudio.currentTime + 0.12);
+      volume.gain.setValueAtTime(0.20, contextoAudio.currentTime);
+      volume.gain.exponentialRampToValueAtTime(0.001, contextoAudio.currentTime + 0.18);
+      som.start(contextoAudio.currentTime);
+      som.stop(contextoAudio.currentTime + 0.20);
+      break;
+    case 'ROXO':
+      som.type = 'sawtooth';
+      som.frequency.setValueAtTime(440, contextoAudio.currentTime);
+      som.frequency.exponentialRampToValueAtTime(700, contextoAudio.currentTime + 0.15);
+      volume.gain.setValueAtTime(0.16, contextoAudio.currentTime);
+      volume.gain.exponentialRampToValueAtTime(0.001, contextoAudio.currentTime + 0.20);
+      som.start(contextoAudio.currentTime);
+      som.stop(contextoAudio.currentTime + 0.22);
+      break;
+    case 'LARANJA':
+      som.type = 'square';
+      som.frequency.setValueAtTime(330, contextoAudio.currentTime);
+      som.frequency.exponentialRampToValueAtTime(220, contextoAudio.currentTime + 0.10);
+      volume.gain.setValueAtTime(0.22, contextoAudio.currentTime);
+      volume.gain.exponentialRampToValueAtTime(0.001, contextoAudio.currentTime + 0.15);
+      som.start(contextoAudio.currentTime);
+      som.stop(contextoAudio.currentTime + 0.18);
+      break;
+  }
 }
 
-// Som de Explosão — VOLUME AUMENTADO
 function somExplosao(tamanho = 1) {
   if (!contextoAudio) return;
   const som = contextoAudio.createOscillator();
@@ -78,26 +136,16 @@ function somExplosao(tamanho = 1) {
 function ajustarTela() {
   const janelaLargura = window.innerWidth;
   const janelaAltura = window.innerHeight;
-
   const escalaX = janelaLargura / TELA_BASE_LARGURA;
   const escalaY = janelaAltura / TELA_BASE_ALTURA;
   escala = Math.min(escalaX, escalaY);
-
   TELA_LARGURA = Math.round(TELA_BASE_LARGURA * escala);
   TELA_ALTURA = Math.round(TELA_BASE_ALTURA * escala);
-
   canvas.width = TELA_LARGURA;
   canvas.height = TELA_ALTURA;
   canvas.style.position = 'absolute';
   canvas.style.left = `${(janelaLargura - TELA_LARGURA) / 2}px`;
   canvas.style.top = `${(janelaAltura - TELA_ALTURA) / 2}px`;
-
-  // Ajusta tamanho da fonte junto com a tela
-  const tamFonte = Math.round(15 * escala);
-  elStatusTiro.style.fontSize = `${tamFonte}px`;
-  elPontos.style.fontSize = `${Math.round(16 * escala)}px`;
-  elVidas.style.fontSize = `${Math.round(16 * escala)}px`;
-  elFase.style.fontSize = `${Math.round(16 * escala)}px`;
 }
 window.addEventListener('resize', ajustarTela);
 
@@ -107,7 +155,6 @@ window.addEventListener('resize', ajustarTela);
 const spriteNave = new Image();
 spriteNave.src = 'SF.png';
 spriteNave.onerror = () => console.log('⚠️ Imagem SF.png não encontrada');
-
 const spriteInimigo = new Image();
 spriteInimigo.src = '1.png';
 spriteInimigo.onerror = () => console.log('⚠️ Imagem 1.png não encontrada');
@@ -135,13 +182,12 @@ function criarEstrelas() {
 // TIPOS DO JOGO
 // =====================================================
 const TIPOS_TIRO = {
-  AMARELO: { nome: 'Tiro Reto', cor: '#ffff00', formato: 'reto' },
-  VERDE: { nome: 'Tiro Duplo', cor: '#00ff88', formato: 'reto' },
-  AZUL: { nome: 'Tiro Espalhado', cor: '#00aaff', formato: 'espalhado' },
-  ROXO: { nome: 'Tiro Curvo', cor: '#ff00ff', formato: 'curvo' },
-  LARANJA: { nome: 'Tiro Explosivo', cor: '#ff8800', formato: 'explosivo' }
+  AMARELO: { nome: 'Tiro Reto', cor: '#ffff00', formato: 'reto', chave: 'AMARELO' },
+  VERDE: { nome: 'Tiro Duplo', cor: '#00ff88', formato: 'reto', chave: 'VERDE' },
+  AZUL: { nome: 'Tiro Espalhado', cor: '#00aaff', formato: 'espalhado', chave: 'AZUL' },
+  ROXO: { nome: 'Tiro Curvo', cor: '#ff00ff', formato: 'curvo', chave: 'ROXO' },
+  LARANJA: { nome: 'Tiro Explosivo', cor: '#ff8800', formato: 'explosivo', chave: 'LARANJA' }
 };
-
 const TIPOS_INIMIGOS = {
   FRACO: { vidaMax: 1, cor: '#66ff66', pontos: 10, tamanho: 32 },
   NORMAL: { vidaMax: 2, cor: '#ffcc00', pontos: 25, tamanho: 38 },
@@ -156,10 +202,10 @@ const TIROS_POR_VIDA = 5;
 let jogo = {
   pontos: 0, vidas: 3, vidaAtual: TIROS_POR_VIDA,
   fase: 1, gameOver: false,
-  tipoTiroAtual: TIPOS_TIRO.AMARELO, nivelPoder: 1, danoPorTiro: 1,
+  tipoTiroAtual: TIPOS_TIRO.AMARELO,
+  nivelPoder: 1, danoPorTiro: 1,
   cadencia: 280, tempoProximoItem: 3000
 };
-
 let teclas = {};
 const jogador = {
   x: TELA_BASE_LARGURA / 2 - 25, y: TELA_BASE_ALTURA - 80,
@@ -167,7 +213,6 @@ const jogador = {
   tiros: [], podeAtirar: true,
   inclinacaoRolamento: 0, inclinacaoMax: 0.35, suavidade: 0.15
 };
-
 let inimigos = [], tirosInimigos = [], explosoes = [], itensUpgrade = [];
 let ultimoTempo = 0, tempoAcumulado = 0;
 
@@ -204,6 +249,20 @@ function criarItemUpgrade() {
   });
 }
 
+function coletarItemUpgrade(item) {
+  if (item.tipo.chave === jogo.tipoTiroAtual.chave) {
+    jogo.nivelPoder = Math.min(jogo.nivelPoder + 1, 5);
+    jogo.danoPorTiro = 1 + (jogo.nivelPoder - 1) * 0.5;
+    jogo.cadencia = Math.max(280 - jogo.nivelPoder * 30, 120);
+  } else {
+    jogo.tipoTiroAtual = item.tipo;
+    jogo.nivelPoder = 1;
+    jogo.danoPorTiro = 1;
+    jogo.cadencia = 280;
+  }
+  atualizarStatusUI();
+}
+
 // =====================================================
 // FUNÇÕES DE DESENHO
 // =====================================================
@@ -222,7 +281,6 @@ function desenharJogador() {
   ctx.transform(1, jogador.inclinacaoRolamento, 0, 1, 0, 0);
   ctx.shadowBlur = 18;
   ctx.shadowColor = jogo.tipoTiroAtual.cor;
-
   if (spriteNave.complete && spriteNave.naturalWidth > 0) {
     ctx.drawImage(spriteNave, -25, -25, 50, 50);
   } else {
@@ -239,8 +297,6 @@ function desenharJogador() {
     ctx.moveTo(0, -18); ctx.lineTo(-3, 12); ctx.lineTo(3, 12); ctx.closePath(); ctx.fill();
   }
   ctx.restore();
-
-  // Barra de vida
   const lrg = jogador.largura + 10, alt = 6;
   const x = jogador.x - 5, y = jogador.y - 15;
   const pct = jogo.vidaAtual / TIROS_POR_VIDA;
@@ -261,10 +317,8 @@ function desenharInimigo(inf) {
   const tamanho = tipo.tamanho;
   const cx = inf.x + inf.largura / 2;
   const cy = inf.y + inf.altura / 2;
-
   ctx.save();
   ctx.translate(cx, cy);
-
   if (spriteInimigo.complete && spriteInimigo.naturalWidth > 0) {
     ctx.rotate(Math.PI);
     ctx.drawImage(spriteInimigo, -tamanho / 2, -tamanho / 2, tamanho, tamanho);
@@ -285,11 +339,7 @@ function desenharInimigo(inf) {
     ctx.arc(0, 6, 6, 0, Math.PI);
     ctx.fill();
   }
-
-  // ✅ CONTORNO REMOVIDO — sem linha ao redor dos inimigos
   ctx.restore();
-
-  // Barra de vida
   const pct = inf.vida / tipo.vidaMax;
   const corBarra = pct > 0.5 ? '#00ff00' : pct > 0.25 ? '#ffcc00' : '#ff0000';
   ctx.fillStyle = '#333';
@@ -342,28 +392,34 @@ function receberDano(qtd = 1) {
   jogo.vidaAtual -= qtd;
   while (jogo.vidaAtual <= 0 && jogo.vidas > 0) {
     jogo.vidas--;
-    elVidas.textContent = `Vidas: ${jogo.vidas}`;
     jogo.vidaAtual = TIROS_POR_VIDA;
   }
   if (jogo.vidas <= 0) {
     jogo.vidaAtual = 0;
     jogo.gameOver = true;
   }
+  atualizarStatusUI();
 }
 
 // =====================================================
-// ATIRAR
+// ATIRAR — TIROS MÚLTIPLOS POR NÍVEL
 // =====================================================
 function atirar() {
   if (jogo.gameOver || !jogador.podeAtirar) return;
-  somTiro();
-  jogador.tiros.push({
-    x: jogador.x + jogador.largura / 2 - 2,
-    y: jogador.y, vx: 0,
-    cor: jogo.tipoTiroAtual.cor,
-    formato: jogo.tipoTiroAtual.formato,
-    dano: jogo.danoPorTiro
-  });
+  somTiro(jogo.tipoTiroAtual.chave);
+  const tirosPorNivel = jogo.nivelPoder;
+  const espacamento = 12;
+  for (let i = 0; i < tirosPorNivel; i++) {
+    const deslocamentoX = (i - (tirosPorNivel - 1) / 2) * espacamento;
+    jogador.tiros.push({
+      x: jogador.x + jogador.largura / 2 - 2 + deslocamentoX,
+      y: jogador.y,
+      vx: 0,
+      cor: jogo.tipoTiroAtual.cor,
+      formato: jogo.tipoTiroAtual.formato,
+      dano: jogo.danoPorTiro
+    });
+  }
   jogador.podeAtirar = false;
   setTimeout(() => jogador.podeAtirar = true, Math.max(jogo.cadencia - jogo.nivelPoder * 30, 120));
 }
@@ -398,27 +454,32 @@ function criarFase() {
 // ATUALIZAR INTERFACE
 // =====================================================
 function atualizarStatusUI() {
-  elStatusTiro.style.color = jogo.tipoTiroAtual.cor;
-  elStatusTiro.innerHTML = `🔫 ${jogo.tipoTiroAtual.nome}<br>⭐ Nível: ${jogo.nivelPoder}/5<br>💥 Dano: ${jogo.danoPorTiro.toFixed(1)}`;
+  const elStatusTiro = document.getElementById('status-tiro');
+  const elPontos = document.getElementById('pontos');
+  const elVidas = document.getElementById('vidas');
+  const elFase = document.getElementById('fase');
+
+  if (elStatusTiro) {
+    elStatusTiro.innerHTML = `${jogo.tipoTiroAtual.nome}<br>⭐ Nível: ${jogo.nivelPoder}/5<br>💥 Dano: ${jogo.danoPorTiro.toFixed(1)}<br>🚀 Tiros: ${jogo.nivelPoder}`;
+  }
+  if (elPontos) elPontos.textContent = jogo.pontos;
+  if (elVidas) elVidas.textContent = jogo.vidas;
+  if (elFase) elFase.textContent = jogo.fase;
 }
 
 // =====================================================
-// LOOP PRINCIPAL DO JOGO
+// LOOP PRINCIPAL
 // =====================================================
 function loop(tempoAtual) {
-  // Atualizar lógica
   if (!jogo.gameOver) {
     const delta = tempoAtual - ultimoTempo;
     ultimoTempo = tempoAtual;
     tempoAcumulado += delta;
-
     if (tempoAcumulado > jogo.tempoProximoItem) {
       criarItemUpgrade();
       jogo.tempoProximoItem = 2500 + Math.random() * 3500;
       tempoAcumulado = 0;
     }
-
-    // MOVIMENTO + INCLINAÇÃO DA NAVE ✅
     if (teclas['ArrowLeft'] && jogador.x > 0) {
       jogador.x -= jogador.velocidade;
       jogador.inclinacaoRolamento = -jogador.inclinacaoMax;
@@ -428,22 +489,15 @@ function loop(tempoAtual) {
     } else {
       jogador.inclinacaoRolamento *= 0.85;
     }
-
-    // Atualizar tiros
     jogador.tiros = jogador.tiros.filter(t => { t.y -= 10; return t.y > -20; });
-
-    // Atualizar itens
     itensUpgrade.forEach((item, idx) => {
       item.y += item.velocidade;
       if (colideItem(jogador, item)) {
-        jogo.tipoTiroAtual = item.tipo;
-        atualizarStatusUI();
+        coletarItemUpgrade(item);
         itensUpgrade.splice(idx, 1);
       }
     });
     itensUpgrade = itensUpgrade.filter(i => i.y < TELA_BASE_ALTURA + 50);
-
-    // Atualizar inimigos
     let bateuParede = false;
     const agora = Date.now();
     inimigos.forEach(inf => {
@@ -455,11 +509,7 @@ function loop(tempoAtual) {
       }
     });
     if (bateuParede) inimigos.forEach(inf => { inf.velocidadeX *= -1; inf.y += 20; });
-
-    // Atualizar tiros inimigos
     tirosInimigos = tirosInimigos.filter(t => { t.y += 4 + jogo.fase * 0.3; return t.y < TELA_BASE_ALTURA + 20; });
-
-    // Colisão tiros vs inimigos
     jogador.tiros.forEach((tiro, i) => {
       for (let j = inimigos.length - 1; j >= 0; j--) {
         const inf = inimigos[j];
@@ -470,15 +520,13 @@ function loop(tempoAtual) {
             criarExplosao(inf.x + inf.largura / 2, inf.y + inf.altura / 2, 1, inf.tipo.cor);
             somExplosao(1);
             jogo.pontos += inf.tipo.pontos * jogo.fase;
-            elPontos.textContent = `Pontos: ${jogo.pontos}`;
+            atualizarStatusUI();
             inimigos.splice(j, 1);
           }
           break;
         }
       }
     });
-
-    // Colisão tiros inimigos vs jogador
     tirosInimigos.forEach((tiro, i) => {
       if (colide(tiro, jogador)) {
         tirosInimigos.splice(i, 1);
@@ -487,28 +535,20 @@ function loop(tempoAtual) {
         receberDano(1);
       }
     });
-
-    // Fase concluída
     if (inimigos.length === 0) {
       jogo.fase++;
-      elFase.textContent = `Fase: ${jogo.fase}`;
+      atualizarStatusUI();
       criarFase();
     }
-
-    // Atualizar explosões
     explosoes = explosoes.filter(e => {
       e.duracao--;
       e.particulas.forEach(p => { p.x += p.vx; p.y += p.vy; p.vida -= 0.03; });
       return e.duracao > 0;
     });
   }
-
-  // DESENHAR TUDO
   ctx.fillStyle = '#050b18';
   ctx.fillRect(0, 0, TELA_LARGURA, TELA_ALTURA);
-
   desenharComEscala(() => {
-    // Estrelas
     estrelas.forEach(e => {
       e.y += e.velocidade;
       if (e.y > TELA_BASE_ALTURA) { e.y = 0; e.x = Math.random() * TELA_BASE_LARGURA; }
@@ -519,7 +559,6 @@ function loop(tempoAtual) {
       ctx.fill();
     });
     ctx.globalAlpha = 1;
-
     itensUpgrade.forEach(i => desenharItemUpgrade(i));
     desenharJogador();
     jogador.tiros.forEach(t => desenharTiro(t));
@@ -528,8 +567,6 @@ function loop(tempoAtual) {
       ctx.fillStyle = '#ff4444';
       ctx.fillRect(t.x, t.y, 4, 15);
     });
-
-    // Explosões
     explosoes.forEach(e => e.particulas.forEach(p => {
       if (p.vida <= 0) return;
       ctx.globalAlpha = p.vida;
@@ -539,8 +576,6 @@ function loop(tempoAtual) {
       ctx.fill();
     }));
     ctx.globalAlpha = 1;
-
-    // Game Over
     if (jogo.gameOver) {
       ctx.fillStyle = 'rgba(0,0,0,0.85)';
       ctx.fillRect(0, 0, TELA_BASE_LARGURA, TELA_BASE_ALTURA);
@@ -555,7 +590,6 @@ function loop(tempoAtual) {
       ctx.fillText('ESPAÇO para reiniciar', TELA_BASE_LARGURA / 2, TELA_BASE_ALTURA / 2 + 100);
     }
   });
-
   requestAnimationFrame(loop);
 }
 
@@ -568,7 +602,6 @@ window.addEventListener('keydown', e => {
     e.preventDefault();
     iniciarAudio();
     if (jogo.gameOver) {
-      // Reiniciar jogo
       jogo = {
         pontos: 0, vidas: 3, vidaAtual: TIROS_POR_VIDA,
         fase: 1, gameOver: false,
@@ -580,9 +613,6 @@ window.addEventListener('keydown', e => {
       jogador.tiros = [];
       itensUpgrade.length = 0;
       explosoes.length = 0;
-      elPontos.textContent = 'Pontos: 0';
-      elVidas.textContent = 'Vidas: 3';
-      elFase.textContent = 'Fase: 1';
       atualizarStatusUI();
       criarFase();
     } else {
@@ -590,14 +620,14 @@ window.addEventListener('keydown', e => {
     }
   }
 });
-
 window.addEventListener('keyup', e => {
   teclas[e.key] = false;
 });
 
 // =====================================================
-// INICIAR JOGO
+// INICIAR TUDO — CRIA AS DIVS E DEPOIS O JOGO
 // =====================================================
+criarPaineis();  // ← CRIA AS DIVS AUTOMATICAMENTE!
 ajustarTela();
 criarEstrelas();
 atualizarStatusUI();
